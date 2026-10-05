@@ -1,129 +1,81 @@
-# Projekt – Biblioteka do wyświetlania kształtów
+# Shape Rendering Library (C++)
 
-## Opis projektu
+A small object-oriented C++ library for drawing geometric shapes in the console.
+It supports circles, triangles, parallelograms, and composite shapes made of up to five figures.
 
-Projekt przedstawia prostą bibliotekę do wyświetlania kształtów w konsoli. Program umożliwia rysowanie podstawowych figur: koła, trójkąta i równoległoboku. Dodatkowo zaimplementowano klasę `ComplexShape`, która pozwala tworzyć kształt złożony z maksymalnie pięciu innych figur.
+The key idea is **separating what a shape is from how it is displayed**. Shape classes store
+geometry only, while separate display classes decide how to render them. This is an
+application of the **Bridge design pattern**: a new display mode can be added without
+changing any shape class, and the display of an existing shape can be switched at runtime.
 
-Głównym założeniem projektu jest oddzielenie kształtu od sposobu jego wyświetlania. Oznacza to, że klasy reprezentujące figury nie wiedzą dokładnie, czy mają zostać narysowane tekstowo, czy graficznie. Za sposób wyświetlania odpowiadają osobne klasy.
+## Example output
 
-## Zastosowane elementy programowania obiektowego
+```
+   p
+  ppp
+pppppp
+ ppp
+  p
+```
+```
+Drawing a parallelogram from vectors (3, 2), (2, -2).
+```
+The same `Parallelogram` object drawn with `GraphicalDisplay`, then with `TextDisplay`.
 
-W projekcie wykorzystano:
+## Architecture
 
-* dziedziczenie,
-* klasy abstrakcyjne,
-* polimorfizm,
-* wskaźniki,
-* własne wyjątki,
-* szablon klasy,
-* dynamiczną zmianę sposobu wyświetlania.
+```
+Shape (abstract)  ──has a──▶  Display (interface)
+ ├── Circle                    ├── GraphicalDisplay   draws with characters in the console
+ ├── Triangle                  └── TextDisplay        prints a text description
+ ├── Parallelogram
+ └── ComplexShape  (holds up to 5 shapes)
+```
 
-Klasa `Display` jest interfejsem, z którego dziedziczą klasy `TextDisplay` oraz `GraphicalDisplay`. Klasa `Shape` jest klasą bazową dla wszystkich kształtów. Każdy obiekt typu `Shape` przechowuje wskaźnik na obiekt `Display`, dzięki czemu może korzystać z różnych sposobów rysowania.
+| Class | Responsibility |
+|-------|----------------|
+| `Display` | Abstract interface with `drawCircle()`, `drawTriangle()`, `drawParallelogram()` |
+| `GraphicalDisplay` | Renders shapes in the console using a scanline algorithm with linear interpolation |
+| `TextDisplay` | Prints a text description of each shape |
+| `Shape` | Abstract base class; holds a pointer to a `Display` and provides `changeDisplay()` |
+| `Circle`, `Triangle`, `Parallelogram` | Store geometry and delegate drawing to the current `Display` |
+| `ComplexShape` | Composite shape that draws up to five shapes in the order they were added |
+| `MyExceptions`, `Validation` | Custom exception hierarchy and input validation |
 
-## Struktura klas
+## C++ concepts used
 
-### Display
+- Inheritance, abstract classes and polymorphism (pure virtual functions)
+- Bridge design pattern, runtime switching of behavior
+- Custom exception hierarchy derived from `std::runtime_error`
+- Input validation (radius, vector values, null pointers)
+- Separation into header and source files
 
-Klasa abstrakcyjna odpowiedzialna za deklarację metod rysowania:
-
-* `drawTriangle()`,
-* `drawCircle()`,
-* `drawParallelogram()`.
-
-### TextDisplay
-
-Klasa wyświetlająca figury w formie tekstowej. Zamiast rysunku wypisuje komunikat opisujący rysowany kształt.
-
-### GraphicalDisplay
-
-Klasa rysująca figury w konsoli za pomocą znaków:
-
-* `t` dla trójkąta,
-* `c` dla koła,
-* `p` dla równoległoboku.
-
-### Shape
-
-Klasa bazowa dla wszystkich figur. Przechowuje wskaźnik na aktualny sposób wyświetlania oraz posiada metodę `changeDisplay()`, która pozwala zmienić sposób rysowania w trakcie działania programu.
-
-### Circle
-
-Klasa reprezentująca koło. Przechowuje promień i przekazuje rysowanie do aktualnego obiektu `Display`.
-
-### Triangle
-
-Klasa reprezentująca trójkąt. Trójkąt jest opisany za pomocą dwóch wektorów `(a1, a2)` oraz `(b1, b2)`.
-
-### Parallelogram
-
-Klasa reprezentująca równoległobok. Podobnie jak trójkąt, opiera się na dwóch wektorach.
-
-### ComplexShape
-
-Klasa reprezentująca kształt złożony. Pozwala dodać maksymalnie pięć figur i wyświetla je kolejno w takiej kolejności, w jakiej zostały dodane.
-
-W klasie tej wykorzystano szablon `FixedArray`, który odpowiada za przechowywanie ograniczonej liczby elementów.
-
-### MyExceptions
-
-Pliki `myexceptions.h` i `myexceptions.cpp` zawierają własne klasy wyjątków oraz klasę `Validation`, która sprawdza poprawność danych wejściowych.
-
-Obsługiwane są między innymi błędy:
-
-* niepoprawny promień koła,
-* niepoprawne wartości wektorów,
-* pusty wskaźnik na `Display`,
-* pusty wskaźnik na `Shape`.
-
-## Sposób działania programu
-
-Na początku tworzone są obiekty odpowiedzialne za sposób wyświetlania:
+## Usage
 
 ```cpp
-Display* w1 = new GraphicalDisplay();
-Display* w2 = new TextDisplay();
+Display* graphical = new GraphicalDisplay();
+Display* text = new TextDisplay();
+
+Shape* circle = new Circle(graphical, 5);
+circle->draw();                 // drawn with 'c' characters
+
+circle->changeDisplay(text);
+circle->draw();                 // "Drawing a circle with radius 5."
 ```
 
-Następnie tworzone są figury, które otrzymują wybrany sposób wyświetlania:
+## Build and run
 
-```cpp
-Shape* o1 = new Triangle(w1, 3, 2, 2, -2);
-Shape* o2 = new Parallelogram(w1, 3, 2, 2, -2);
-Shape* o3 = new Circle(w1, 5);
-```
-
-Po wywołaniu metody `draw()` figury są rysowane przy pomocy aktualnie ustawionej klasy `Display`.
-
-Program umożliwia również zmianę sposobu wyświetlania:
-
-```cpp
-o1->changeDisplay(w2);
-```
-
-Po tej operacji ten sam obiekt może zostać wyświetlony w inny sposób.
-
-## Kompilacja programu
-
-Przykładowa komenda kompilacji z folderu `SourceFiles`:
+With CMake:
 
 ```bash
-g++ -I../Headers main.cpp display.cpp textDisplay.cpp graphicalDisplay.cpp shape.cpp circle.cpp triangle.cpp parallelogram.cpp complexShape.cpp myexceptions.cpp -o program
+cmake -S . -B build
+cmake --build build
+./build/shapes
 ```
 
-Uruchomienie programu:
+Or directly with g++:
 
 ```bash
-./program
+g++ -std=c++17 -IHeaders SourceFiles/*.cpp -o shapes
+./shapes
 ```
-
-W systemie Windows:
-
-```bash
-.\program.exe
-```
-
-## Wnioski
-
-Projekt pokazuje praktyczne zastosowanie polimorfizmu i dziedziczenia w C++. Dzięki oddzieleniu klas kształtów od klas wyświetlających program jest elastyczny i łatwy do rozbudowy. Można dodać nowy sposób wyświetlania bez zmieniania klas figur.
-
-Najważniejszym elementem projektu jest to, że obiekty `Circle`, `Triangle` i `Parallelogram` odpowiadają za przechowywanie danych o figurze, natomiast klasy `TextDisplay` i `GraphicalDisplay` odpowiadają za sposób jej narysowania.
